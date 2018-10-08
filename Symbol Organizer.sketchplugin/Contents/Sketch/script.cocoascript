@@ -94,7 +94,10 @@ var organize = function(context,type) {
 					// If user wants to display group titles...
 					if (layoutSettings.displayTitles == 1) {
 						// Title style variables
-						if (layoutSettings.sortDirection == 1) titleStyleFont.textAlignment = 1;
+						//@jesse
+						if (layoutSettings.displayTitlesSet == 0) {
+							if (layoutSettings.sortDirection == 1) titleStyleFont.textAlignment = 1;
+						}
 						var offsetHeight = titleStyleFont.lineHeight;
 
 						// Check for title style
@@ -152,10 +155,17 @@ var organize = function(context,type) {
 						// Create new screen title group
 						titleGroup = MSLayerGroup.new();
 						titleGroup.setName(titleGroupName);
-						titleGroup.frame().setX((layoutSettings.sortDirection == 0) ? 0 : -xPad);
-						titleGroup.frame().setY((layoutSettings.sortDirection == 0) ? -(offsetHeight+yPad) : 0);
+						if (layoutSettings.displayTitlesSet == 0) {
+							titleGroup.frame().setX((layoutSettings.sortDirection == 0) ? 0 : -xPad);
+							titleGroup.frame().setY((layoutSettings.sortDirection == 0) ? -(offsetHeight+yPad) : 0);
+						} else {
+							titleGroup.frame().setX(0);
+							titleGroup.frame().setY(-(offsetHeight+yPad));
+						}
 						titleGroup.setIsLocked(true);
 						titleGroup.setHasClickThrough(true);
+					} else {
+						var offsetHeight = 0;
 					}
 
 					// Set tracker/counters
@@ -180,7 +190,12 @@ var organize = function(context,type) {
 							if (layoutSettings.sortDirection == 0) {
 								titleTextX = (objectCount == 1) ? 0 : x + groupSpace + gPad;
 							} else {
-								titleTextY = (objectCount == 1) ? 0 : y + groupSpace + gPad;
+								if (layoutSettings.displayTitlesSet == 0) {
+									titleTextY = (objectCount == 1) ? 0 : y + groupSpace + gPad;
+								} else {
+									titleTextY = (objectCount == 1) ? 0 : y + groupSpace + offsetHeight + gPad;
+								}
+								
 								titleTextAlign = 1;
 							}
 
@@ -194,7 +209,11 @@ var organize = function(context,type) {
 								screenTitle.frame().setX(titleTextX);
 							} else {
 								screenTitle.frame().setY(titleTextY);
-								screenTitle.frame().setX(titleTextX-screenTitle.frame().width());
+								if (layoutSettings.displayTitlesSet == 0) {
+									screenTitle.frame().setX(titleTextX-screenTitle.frame().width());
+								} else {
+									screenTitle.frame().setX(titleTextX);
+								}
 							}
 
 							// Set screen title style
@@ -218,7 +237,12 @@ var organize = function(context,type) {
 							} else {
 								// Reset x position, set the y position of the next row
 								x = 0;
-								y += groupSpace + gPad;
+								if (layoutSettings.displayTitlesSet == 0) {
+									y += groupSpace + gPad;
+								} else {
+									y += groupSpace + offsetHeight + gPad;
+								}
+								
 							}
 
 							// Reset the group space tracker
@@ -274,6 +298,7 @@ var organize = function(context,type) {
 
 							// Set the x position for the next symbol
 							x += symbolFrame.width() + xPad;
+
 						}
 
 						// Increment the object counter
@@ -356,6 +381,7 @@ function getLayoutSettings(context,type) {
 	defaultSettings.sortDirection = 0;
 	defaultSettings.gPad = "200";
 	defaultSettings.displayTitles = 0;
+	defaultSettings.displayTitlesSet = 1;
 	defaultSettings.styleName = "Symbol Organizer/Group Title";
 	defaultSettings.reverseOrder = 0;
 	defaultSettings.gatherSymbols = 0;
@@ -415,6 +441,7 @@ function getLayoutSettings(context,type) {
 			groupDirectionValue.selectCellAtRow_column(originalSettings.sortDirection,0);
 			groupSpaceValue.setStringValue(originalSettings.gPad);
 			groupTitlesCheckbox.setState(originalSettings.displayTitles);
+			groupTitlesSetCheckbox.setState(originalSettings.displayTitlesSet);
 			styleNameValue.setStringValue(originalSettings.styleName);
 			styleNameValue.setEnabled(groupTitlesCheckbox.state());
 			reverseOrderCheckbox.setState(originalSettings.reverseOrder);
@@ -466,7 +493,7 @@ function getLayoutSettings(context,type) {
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
-		var groupSpaceLabel = createLabel("Group Space",12,NSMakeRect(0,settingY,leftColWidth,labelHeight));
+		var groupSpaceLabel = createLabel("分组间隔",12,NSMakeRect(0,settingY,leftColWidth,labelHeight));
 		alertContent.addSubview(groupSpaceLabel);
 
 		var groupSpaceValue = createField(defaultSettings.gPad,NSMakeRect(leftColWidth,settingY,fieldWidth,fieldHeight));
@@ -479,17 +506,25 @@ function getLayoutSettings(context,type) {
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
-		var groupTitlesCheckbox = createCheckbox({name:"Display group titles",value:1},defaultSettings.displayTitles,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
+		var groupTitlesCheckbox = createCheckbox({name:"显示分组标题",value:1},defaultSettings.displayTitles,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
 		alertContent.addSubview(groupTitlesCheckbox);
 
 		groupTitlesCheckbox.setAction("callAction:");
 		groupTitlesCheckbox.setCOSJSTargetFunction(function(sender) {
 			styleNameValue.setEnabled(sender.state());
+			groupTitlesSetCheckbox.setEnabled(sender.state());
 		});
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
-		var styleNameLabel = createLabel("Title Style Name",12,NSMakeRect(0,settingY+textOffset,leftColWidth,labelHeight));
+		var groupTitlesSetCheckbox = createCheckbox({name:"垂直排列时标题在上",value:1},defaultSettings.displayTitlesSet,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
+		alertContent.addSubview(groupTitlesSetCheckbox);
+
+		groupTitlesSetCheckbox.setEnabled(groupTitlesCheckbox.state());
+
+		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
+
+		var styleNameLabel = createLabel("标题样式名",12,NSMakeRect(0,settingY+textOffset,leftColWidth,labelHeight));
 		alertContent.addSubview(styleNameLabel);
 
 		var styleNameValue = createField(defaultSettings.styleName,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,fieldHeight));
@@ -517,12 +552,7 @@ function getLayoutSettings(context,type) {
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
-		var gatherSymbolsCheckbox = createCheckbox({name:"Gather symbols from other pages",value:1},defaultSettings.gatherSymbols,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
-		alertContent.addSubview(gatherSymbolsCheckbox);
-
-		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
-
-		var horizontalSpaceLabel = createLabel("Horizontal Space",12,NSMakeRect(0,settingY+textOffset,leftColWidth,labelHeight));
+		var horizontalSpaceLabel = createLabel("水平间距",12,NSMakeRect(0,settingY+textOffset,leftColWidth,labelHeight));
 		alertContent.addSubview(horizontalSpaceLabel);
 
 		var horizontalSpaceValue = createField(defaultSettings.xPad,NSMakeRect(leftColWidth,settingY,fieldWidth,fieldHeight));
@@ -530,7 +560,7 @@ function getLayoutSettings(context,type) {
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
-		var verticalSpaceLabel = createLabel("Vertical Space",12,NSMakeRect(0,settingY+textOffset,leftColWidth,labelHeight));
+		var verticalSpaceLabel = createLabel("垂直间距",12,NSMakeRect(0,settingY+textOffset,leftColWidth,labelHeight));
 		alertContent.addSubview(verticalSpaceLabel);
 
 		var verticalSpaceValue = createField(defaultSettings.yPad,NSMakeRect(leftColWidth,settingY,fieldWidth,fieldHeight));
@@ -546,25 +576,30 @@ function getLayoutSettings(context,type) {
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
+		var gatherSymbolsCheckbox = createCheckbox({name:"收集其他页面上的组件",value:1},defaultSettings.gatherSymbols,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
+		alertContent.addSubview(gatherSymbolsCheckbox);
+
+		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
+
 		var renameSymbolsCheckbox = createCheckbox({name:"Sequentially number duplicates",value:1},defaultSettings.renameSymbols,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
 		alertContent.addSubview(renameSymbolsCheckbox);
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + settingPad;
 
-		var removeSymbolsCheckbox = createCheckbox({name:"Remove unused symbols on page",value:1},defaultSettings.removeSymbols,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
+		var removeSymbolsCheckbox = createCheckbox({name:"移除未使用的组件",value:1},defaultSettings.removeSymbols,NSMakeRect(leftColWidth,settingY,windowWidth-leftColWidth,switchHeight));
 		alertContent.addSubview(removeSymbolsCheckbox);
 
 		settingY = CGRectGetMaxY(alertContent.subviews().lastObject().frame()) + textOffset;
 
-		var removeSymbolsDesc = createDescription("Presents a checklist for your review and confirmation.",11,NSMakeRect(leftColWidth+18,settingY,windowWidth-leftColWidth-18,28));
+		var removeSymbolsDesc = createDescription("将会显示一个列表进行确认。",11,NSMakeRect(leftColWidth+18,settingY,windowWidth-leftColWidth-18,28));
 		alertContent.addSubview(removeSymbolsDesc);
 
 		alertContent.frame = NSMakeRect(0,0,windowWidth,CGRectGetMaxY(removeSymbolsDesc.frame()));
 
 		alert.accessoryView = alertContent;
 
-		var buttonOrganize = alert.addButtonWithTitle("Organize");
-		var buttonCancel = alert.addButtonWithTitle("Cancel");
+		var buttonOrganize = alert.addButtonWithTitle("执行");
+		var buttonCancel = alert.addButtonWithTitle("取消");
 
 		setKeyOrder(alert,[
 			globalSettingsValue,
@@ -595,6 +630,7 @@ function getLayoutSettings(context,type) {
 				userDefaults.setObject_forKey(groupDirectionValue.selectedCell().tag(),"sortDirection");
 				userDefaults.setObject_forKey(groupSpaceValue.stringValue(),"gPad");
 				userDefaults.setObject_forKey(groupTitlesCheckbox.state(),"displayTitles");
+				userDefaults.setObject_forKey(groupTitlesSetCheckbox.state(),"displayTitlesSet");
 				userDefaults.setObject_forKey(styleNameValue.stringValue(),"styleName");
 				userDefaults.setObject_forKey(reverseOrderCheckbox.state(),"reverseOrder");
 				userDefaults.setObject_forKey(gatherSymbolsCheckbox.state(),"gatherSymbols");
@@ -609,6 +645,7 @@ function getLayoutSettings(context,type) {
 				context.command.setValue_forKey_onLayer(groupDirectionValue.selectedCell().tag(),"sortDirection",page);
 				context.command.setValue_forKey_onLayer(groupSpaceValue.stringValue(),"gPad",page);
 				context.command.setValue_forKey_onLayer(groupTitlesCheckbox.state(),"displayTitles",page);
+				context.command.setValue_forKey_onLayer(groupTitlesSetCheckbox.state(),"displayTitlesSet",page);
 				context.command.setValue_forKey_onLayer(styleNameValue.stringValue(),"styleName",page);
 				context.command.setValue_forKey_onLayer(reverseOrderCheckbox.state(),"reverseOrder",page);
 				context.command.setValue_forKey_onLayer(gatherSymbolsCheckbox.state(),"gatherSymbols",page);
@@ -624,6 +661,7 @@ function getLayoutSettings(context,type) {
 				sortDirection : groupDirectionValue.selectedCell().tag(),
 				gPad : groupSpaceValue.stringValue(),
 				displayTitles : groupTitlesCheckbox.state(),
+				displayTitlesSet : groupTitlesSetCheckbox.state(),
 				styleName : styleNameValue.stringValue(),
 				reverseOrder : reverseOrderCheckbox.state(),
 				gatherSymbols : gatherSymbolsCheckbox.state(),
@@ -643,6 +681,7 @@ function getLayoutSettings(context,type) {
 			sortDirection : defaultSettings.sortDirection,
 			gPad : defaultSettings.gPad,
 			displayTitles : defaultSettings.displayTitles,
+			displayTitlesSet : defaultSettings.displayTitlesSet,
 			styleName : defaultSettings.styleName,
 			reverseOrder : defaultSettings.reverseOrder,
 			gatherSymbols : defaultSettings.gatherSymbols,
